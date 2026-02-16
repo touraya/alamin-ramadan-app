@@ -5,47 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Alamin’s Ramadan App</title>
 
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b3d2e">
+
   <style>
-    :root { --bg:#0b3d2e; --gold:#f4c430; --card:#ffffff; --text:#111; }
+    :root { --bg:#0b3d2e; --gold:#f4c430; --card:#fff; --text:#111; }
     body { margin:0; font-family: Arial, sans-serif; background:var(--bg); color:#fff; padding:18px; }
     h1 { margin:0 0 6px 0; font-size:28px; }
     .muted { margin:0 0 14px 0; color:rgba(255,255,255,0.85); }
-    button { padding:12px 14px; border-radius:10px; border:none; background:var(--gold); font-weight:700; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    button { padding:12px 14px; border-radius:10px; border:none; background:var(--gold); font-weight:700; cursor:pointer; }
+    button.secondary { background:#fff; color:#111; border:1px solid #ddd; }
+    input { padding:12px; border-radius:10px; border:1px solid #ddd; width:100%; box-sizing:border-box; }
+    .grow { flex:1; min-width:220px; }
     .card { background:var(--card); color:var(--text); border-radius:14px; padding:14px; margin-top:14px; }
-    .toprow { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
     .pill { display:inline-block; padding:6px 10px; border-radius:999px; background:#eef2f7; font-size:14px; }
-    table { width:100%; border-collapse:collapse; margin-top:10px; }
-    td { padding:10px 8px; border-bottom:1px solid #eee; }
-    td:first-child { font-weight:700; }
-    td:last-child { text-align:right; font-variant-numeric: tabular-nums; }
-    .highlight { background:#fff6d6; border:1px solid #ffe8a1; border-radius:12px; padding:12px; margin-top:12px; }
-    .error { display:none; margin-top:12px; background:#ffe2e2; color:#7a0000; padding:10px; border-radius:10px; }
+    .chip { display:inline-block; padding:6px 10px; border-radius:999px; background:#fff; color:#111; border:1px solid #ddd; font-size:13px; }
     .small { font-size:13px; color:#555; margin-top:10px; }
+    .error { display:none; margin-top:12px; background:#ffe2e2; color:#7a0000; padding:10px; border-radius:10px; }
+    .highlight { background:#fff6d6; border:1px solid #ffe8a1; border-radius:12px; padding:12px; margin-top:12px; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    td, th { padding:10px 8px; border-bottom:1px solid #eee; }
+    td:last-child, th:last-child { text-align:right; font-variant-numeric: tabular-nums; }
+    .list { margin-top:10px; border:1px solid #eee; border-radius:12px; overflow:hidden; }
+    .list button { width:100%; text-align:left; background:#fff; border-radius:0; border-bottom:1px solid #eee; padding:12px; font-weight:600; }
+    .list button:last-child { border-bottom:none; }
   </style>
 </head>
 
 <body>
   <h1>🌙 Alamin’s Ramadan App</h1>
-  <p class="muted">Shows your city + today’s prayer times. Suhoor ends at <b>Fajr</b> (start fasting).</p>
+  <p class="muted">GPS auto-location + search any city (Remseck, Berlin, Freiburg, etc.). Suhoor ends at <b>Fajr</b>.</p>
 
-  <button id="btnLoc">Use My Location</button>
+  <div class="row">
+    <button id="btnGPS">Use My Location (GPS)</button>
+    <span class="chip" id="activeMode">Mode: Not set</span>
+    <span class="chip" id="netState">Online</span>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:800; margin-bottom:10px;">🔎 Search a location</div>
+    <div class="row">
+      <div class="grow">
+        <input id="searchBox" placeholder="Type a city (e.g., Remseck am Neckar, Berlin, Freiburg)" />
+      </div>
+      <button id="btnSearch">Search</button>
+      <button id="btnClear" class="secondary">Clear</button>
+    </div>
+    <div class="small">
+      Works offline after you’ve opened it once. If you’re offline, you’ll see the last cached results.
+    </div>
+    <div id="searchResults" class="list" style="display:none;"></div>
+  </div>
 
   <div id="err" class="error"></div>
 
   <div class="card" id="infoCard" style="display:none;">
-    <div class="toprow">
+    <div class="row" style="justify-content:space-between; align-items:flex-start;">
       <div>
-        <div style="font-size:18px; font-weight:700;" id="placeName">—</div>
+        <div style="font-size:18px; font-weight:800;" id="placeName">—</div>
         <div class="small" id="coordsText">—</div>
       </div>
       <div class="pill" id="dateText">—</div>
     </div>
 
-    <div class="highlight" id="fastingBox">
-      <div style="font-weight:800; margin-bottom:6px;">🍽️ Fasting Info</div>
+    <div class="highlight">
+      <div style="font-weight:900; margin-bottom:6px;">🍽️ Fasting Info</div>
       <div id="suhoorEnd">Suhoor ends (stop eating): —</div>
       <div id="iftarTime">Iftar (break fast): —</div>
-      <div class="small">Note: Most timetables use <b>Fajr</b> as the stop-eating time. Some mosques add a small safety margin (e.g., +1 to +5 minutes).</div>
+      <div class="small">If your mosque uses a safety margin (+1 to +5 min), tell me and I’ll add a toggle.</div>
+    </div>
+
+    <div class="highlight">
+      <div style="font-weight:900; margin-bottom:6px;">⏳ Countdown</div>
+      <div id="countdownFajr">To Fajr: —</div>
+      <div id="countdownMaghrib">To Maghrib: —</div>
+      <div class="small">Updates every second.</div>
     </div>
 
     <table>
@@ -53,112 +89,317 @@
     </table>
 
     <div class="small">
-      Calculation source: AlAdhan timings API (method 3). If you want your local mosque method, tell me which one and I’ll adjust.
+      Source: AlAdhan timings API (method 3). Offline: uses the last cached timings.
     </div>
   </div>
 
+  <div class="card" id="ramadanCard" style="display:none;">
+    <div class="row" style="justify-content:space-between; align-items:flex-start;">
+      <div style="font-weight:900;">🗓 Ramadan Mode (30 days)</div>
+      <span class="pill" id="ramadanLabel">—</span>
+    </div>
+
+    <div class="row" style="margin-top:10px;">
+      <div class="grow">
+        <label class="small" style="display:block;margin-bottom:6px;color:#333;">Ramadan Day 1 (Gregorian)</label>
+        <input id="ramadanStart" type="date" value="2026-02-18" />
+      </div>
+      <div>
+        <label class="small" style="display:block;margin-bottom:6px;color:#333;">Days</label>
+        <input id="ramadanDays" type="number" value="30" min="1" max="31" />
+      </div>
+      <div style="align-self:end;">
+        <button id="btnBuildRamadan">Build Table</button>
+      </div>
+    </div>
+
+    <div style="overflow:auto; margin-top:10px;">
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Day</th><th>Fajr (Stop eating)</th><th>Maghrib (Iftar)</th></tr>
+        </thead>
+        <tbody id="ramadanBody"></tbody>
+      </table>
+    </div>
+
+    <div class="small">Uses your currently selected location (GPS or searched city). Offline shows cached days only.</div>
+  </div>
+
 <script>
+  // --- UI refs
   const errBox = document.getElementById("err");
   const infoCard = document.getElementById("infoCard");
+  const ramadanCard = document.getElementById("ramadanCard");
   const placeNameEl = document.getElementById("placeName");
   const coordsTextEl = document.getElementById("coordsText");
   const dateTextEl = document.getElementById("dateText");
   const timesBody = document.getElementById("timesBody");
   const suhoorEndEl = document.getElementById("suhoorEnd");
   const iftarTimeEl = document.getElementById("iftarTime");
+  const cdFajrEl = document.getElementById("countdownFajr");
+  const cdMaghribEl = document.getElementById("countdownMaghrib");
+  const activeModeEl = document.getElementById("activeMode");
+  const netStateEl = document.getElementById("netState");
 
-  function showError(msg) {
-    errBox.style.display = "block";
-    errBox.textContent = msg;
+  const searchBox = document.getElementById("searchBox");
+  const searchResults = document.getElementById("searchResults");
+
+  const ramadanStartEl = document.getElementById("ramadanStart");
+  const ramadanDaysEl = document.getElementById("ramadanDays");
+  const ramadanBody = document.getElementById("ramadanBody");
+  const ramadanLabel = document.getElementById("ramadanLabel");
+
+  // --- State
+  let active = { lat:null, lon:null, label:null, mode:null };
+  let countdownTimer = null;
+
+  // --- Offline helpers
+  function cacheSet(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
   }
-  function clearError() {
-    errBox.style.display = "none";
-    errBox.textContent = "";
+  function cacheGet(key) {
+    try { return JSON.parse(localStorage.getItem(key) || "null"); } catch { return null; }
   }
 
-  // Get a friendly city/town name from GPS using OpenStreetMap Nominatim
-  async function getPlaceName(lat, lon) {
+  function showError(msg) { errBox.style.display = "block"; errBox.textContent = msg; }
+  function clearError() { errBox.style.display = "none"; errBox.textContent = ""; }
+
+  function setMode(mode) { activeModeEl.textContent = `Mode: ${mode}`; }
+
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function timeTodayToDate(hhmm) {
+    const [h,m] = hhmm.split(":").map(Number);
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+  function msToHMS(ms) {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    return `${h}h ${pad2(m)}m ${pad2(s)}s`;
+  }
+
+  function updateNetChip() {
+    const online = navigator.onLine;
+    netStateEl.textContent = online ? "Online" : "Offline";
+  }
+  window.addEventListener("online", updateNetChip);
+  window.addEventListener("offline", updateNetChip);
+  updateNetChip();
+
+  // fetch with offline fallback: try network -> if fails -> localStorage
+  async function fetchJsonWithFallback(url, fallbackKey) {
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error("Network error");
+      const json = await res.json();
+      cacheSet(fallbackKey, json);
+      return json;
+    } catch {
+      const cached = cacheGet(fallbackKey);
+      if (cached) return cached;
+      throw new Error("Offline and no cached data yet. Open once with internet first.");
+    }
+  }
+
+  async function reverseName(lat, lon) {
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!res.ok) throw new Error("Could not fetch location name.");
-    const data = await res.json();
+    const key = `rev:${lat.toFixed(3)},${lon.toFixed(3)}`;
+    const data = await fetchJsonWithFallback(url, key);
     const a = data.address || {};
-    return a.city || a.town || a.village || a.municipality || a.county || "Your location";
+    return a.city || a.town || a.village || a.municipality || a.county || data.name || "Selected location";
   }
 
-  function addRow(label, value) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${label}</td><td>${value}</td>`;
-    timesBody.appendChild(tr);
-  }
+  async function loadTimings(lat, lon, dateObj = null) {
+    const base = `https://api.aladhan.com/v1/timings`;
+    const url = dateObj
+      ? `${base}/${Math.floor(dateObj.getTime()/1000)}?latitude=${lat}&longitude=${lon}&method=3`
+      : `${base}?latitude=${lat}&longitude=${lon}&method=3`;
 
-  async function loadPrayerTimes(lat, lon) {
-    // method=3 is Muslim World League in AlAdhan
-    const url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=3`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Could not fetch prayer times.");
-    const json = await res.json();
+    const key = dateObj
+      ? `tim:${lat.toFixed(3)},${lon.toFixed(3)}:${dateObj.toISOString().slice(0,10)}`
+      : `tim:${lat.toFixed(3)},${lon.toFixed(3)}:today`;
 
+    const json = await fetchJsonWithFallback(url, key);
     const t = json.data.timings;
-
-    // Date label (Gregorian)
     const gDate = json.data.date?.gregorian?.date;
-    dateTextEl.textContent = gDate ? `Today: ${gDate}` : "Today";
+    return { timings: t, gDate };
+  }
 
-    // Fasting info
+  function renderMain(t, gDate) {
+    infoCard.style.display = "block";
+    ramadanCard.style.display = "block";
+
+    dateTextEl.textContent = gDate ? `Today: ${gDate}` : "Today";
+    coordsTextEl.textContent = `Lat ${active.lat.toFixed(5)} • Lon ${active.lon.toFixed(5)}`;
+
     suhoorEndEl.innerHTML = `Suhoor ends (stop eating): <b>${t.Fajr}</b> (Fajr)`;
     iftarTimeEl.innerHTML = `Iftar (break fast): <b>${t.Maghrib}</b> (Maghrib)`;
 
-    // Full prayer times table
     timesBody.innerHTML = "";
-    addRow("Fajr", t.Fajr);
-    addRow("Sunrise", t.Sunrise);
-    addRow("Dhuhr", t.Dhuhr);
-    addRow("Asr", t.Asr);
-    addRow("Maghrib", t.Maghrib);
-    addRow("Isha", t.Isha);
+    const rows = [
+      ["Fajr", t.Fajr],
+      ["Sunrise", t.Sunrise],
+      ["Dhuhr", t.Dhuhr],
+      ["Asr", t.Asr],
+      ["Maghrib", t.Maghrib],
+      ["Isha", t.Isha],
+    ];
+    for (const [k,v] of rows) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td style="font-weight:800;">${k}</td><td>${v}</td>`;
+      timesBody.appendChild(tr);
+    }
+
+    startCountdown(t);
   }
 
-  document.getElementById("btnLoc").addEventListener("click", () => {
-    clearError();
+  function startCountdown(t) {
+    if (countdownTimer) clearInterval(countdownTimer);
 
-    if (!navigator.geolocation) {
-      showError("Geolocation not supported on this device.");
+    function tick() {
+      const now = new Date();
+      let fajr = timeTodayToDate(t.Fajr);
+      let maghrib = timeTodayToDate(t.Maghrib);
+
+      const needNextFajr = now > fajr;
+      const needNextMaghrib = now > maghrib;
+
+      cdFajrEl.textContent = `To Fajr: ${msToHMS((needNextFajr ? fajr.getTime()+86400000 : fajr.getTime()) - now.getTime())}`;
+      cdMaghribEl.textContent = `To Maghrib: ${msToHMS((needNextMaghrib ? maghrib.getTime()+86400000 : maghrib.getTime()) - now.getTime())}`;
+    }
+
+    tick();
+    countdownTimer = setInterval(tick, 1000);
+  }
+
+  async function setActiveLocation(lat, lon, label, mode) {
+    clearError();
+    active = { lat, lon, label, mode };
+    setMode(mode);
+
+    placeNameEl.textContent = "Loading…";
+    const [name, data] = await Promise.all([
+      label ? Promise.resolve(label) : reverseName(lat, lon).catch(() => null),
+      loadTimings(lat, lon)
+    ]);
+
+    placeNameEl.textContent = name || "Selected location";
+    renderMain(data.timings, data.gDate);
+    ramadanLabel.textContent = `Location: ${placeNameEl.textContent}`;
+
+    // Remember last selection for offline re-open
+    cacheSet("lastLocation", { lat, lon, label: placeNameEl.textContent });
+  }
+
+  // GPS
+  document.getElementById("btnGPS").addEventListener("click", () => {
+    clearError();
+    if (!navigator.geolocation) { showError("Geolocation not supported on this device."); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setActiveLocation(pos.coords.latitude, pos.coords.longitude, null, "GPS"),
+      (err) => {
+        if (err.code === 1) showError("Location permission denied. iPhone: Settings → Safari → Location → Allow / While Using.");
+        else showError("Location error: " + err.message);
+      },
+      { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
+    );
+  });
+
+  // Search
+  async function searchPlaces(q) {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=${encodeURIComponent(q)}`;
+    const key = `search:${q.toLowerCase()}`;
+    return await fetchJsonWithFallback(url, key);
+  }
+
+  function showResults(items) {
+    searchResults.style.display = "block";
+    searchResults.innerHTML = "";
+
+    if (!items || items.length === 0) {
+      searchResults.innerHTML = `<div style="padding:12px;color:#333;">No results. Try: "Remseck am Neckar" or "Berlin".</div>`;
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const lat = pos.coords.latitude;
-          const lon = pos.coords.longitude;
+    for (const it of items) {
+      const label = it.display_name.split(",").slice(0,3).join(",").trim();
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      btn.addEventListener("click", () => {
+        searchResults.style.display = "none";
+        setActiveLocation(parseFloat(it.lat), parseFloat(it.lon), label, "Search");
+      });
+      searchResults.appendChild(btn);
+    }
+  }
 
-          infoCard.style.display = "block";
-          coordsTextEl.textContent = `Lat ${lat.toFixed(5)} • Lon ${lon.toFixed(5)}`;
-          placeNameEl.textContent = "Loading location…";
-          timesBody.innerHTML = "";
-
-          // Load both in parallel
-          const [place] = await Promise.all([
-            getPlaceName(lat, lon).catch(() => null),
-            loadPrayerTimes(lat, lon)
-          ]);
-
-          placeNameEl.textContent = place ? place : "Location detected";
-        } catch (e) {
-          showError(e.message || "Something went wrong.");
-        }
-      },
-      (err) => {
-        if (err.code === 1) {
-          showError("Location permission denied. iPhone: Settings → Safari → Location → Allow / While Using.");
-        } else {
-          showError("Location error: " + err.message);
-        }
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
+  document.getElementById("btnSearch").addEventListener("click", async () => {
+    try {
+      clearError();
+      const q = searchBox.value.trim();
+      if (!q) { showError("Type a city name first (e.g., Remseck am Neckar)."); return; }
+      const items = await searchPlaces(q);
+      showResults(items);
+    } catch (e) {
+      showError(e.message || "Search error.");
+    }
   });
+
+  document.getElementById("btnClear").addEventListener("click", () => {
+    searchBox.value = "";
+    searchResults.style.display = "none";
+  });
+
+  // Ramadan table
+  document.getElementById("btnBuildRamadan").addEventListener("click", async () => {
+    try {
+      clearError();
+      if (active.lat == null) { showError("Set a location first (GPS or Search)."); return; }
+      const startStr = ramadanStartEl.value;
+      if (!startStr) { showError("Pick a Ramadan start date."); return; }
+      const days = Math.max(1, Math.min(31, parseInt(ramadanDaysEl.value || "30", 10)));
+
+      const start = new Date(startStr + "T00:00:00");
+      ramadanBody.innerHTML = "";
+
+      for (let i=0; i<days; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const { timings } = await loadTimings(active.lat, active.lon, d);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${d.toLocaleDateString()}</td>
+          <td>${i+1}</td>
+          <td>${timings.Fajr}</td>
+          <td>${timings.Maghrib}</td>
+        `;
+        ramadanBody.appendChild(tr);
+      }
+    } catch (e) {
+      showError(e.message || "Could not build Ramadan table.");
+    }
+  });
+
+  // Auto-load last location (offline friendly)
+  (async function boot() {
+    const last = cacheGet("lastLocation");
+    if (last && typeof last.lat === "number" && typeof last.lon === "number") {
+      try {
+        await setActiveLocation(last.lat, last.lon, last.label || null, "Last saved");
+      } catch {
+        // ignore
+      }
+    }
+  })();
+
+  // Register Service Worker (offline)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
 </script>
 </body>
 </html>
