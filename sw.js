@@ -58,3 +58,20 @@ self.addEventListener("fetch", (event) => {
     caches.match(req).then((cached) => cached || fetch(req))
   );
 });
+// Share button (Web Share API + fallback copy)
+document.getElementById("btnShare").addEventListener("click", async () => {
+  const url = location.href;
+  const title = "Alamin’s Ramadan App";
+  const text = "Prayer times + Ramadan calendar (GPS + city search).";
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, text, url });
+    } else {
+      await navigator.clipboard.writeText(url);
+      alert("Link copied! Paste it in WhatsApp / SMS.");
+    }
+  } catch {
+    // If user cancels share, do nothing
+  }
+});
