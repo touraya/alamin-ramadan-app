@@ -1,4 +1,4 @@
-const CACHE_NAME = "alamin-ramadan-app-v8";
+const CACHE_NAME = "alamin-ramadan-app-v9";
 
 const STATIC_ASSETS = [
   "./",
