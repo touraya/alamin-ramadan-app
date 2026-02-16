@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alamin’s Ramadan App</title>
+
+  <style>
+    :root { --bg:#0b3d2e; --gold:#f4c430; --card:#ffffff; --text:#111; }
+    body { margin:0; font-family: Arial, sans-serif; background:var(--bg); color:#fff; padding:18px; }
+    h1 { margin:0 0 6px 0; font-size:28px; }
+    .muted { margin:0 0 14px 0; color:rgba(255,255,255,0.85); }
+    button { padding:12px 14px; border-radius:10px; border:none; background:var(--gold); font-weight:700; }
+    .card { background:var(--card); color:var(--text); border-radius:14px; padding:14px; margin-top:14px; }
+    .toprow { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+    .pill { display:inline-block; padding:6px 10px; border-radius:999px; background:#eef2f7; font-size:14px; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    td { padding:10px 8px; border-bottom:1px solid #eee; }
+    td:first-child { font-weight:700; }
+    td:last-child { text-align:right; font-variant-numeric: tabular-nums; }
+    .highlight { background:#fff6d6; border:1px solid #ffe8a1; border-radius:12px; padding:12px; margin-top:12px; }
+    .error { display:none; margin-top:12px; background:#ffe2e2; color:#7a0000; padding:10px; border-radius:10px; }
+    .small { font-size:13px; color:#555; margin-top:10px; }
+  </style>
+</head>
+
+<body>
+  <h1>🌙 Alamin’s Ramadan App</h1>
+  <p class="muted">Shows your city + today’s prayer times. Suhoor ends at <b>Fajr</b> (start fasting).</p>
+
+  <button id="btnLoc">Use My Location</button>
+
+  <div id="err" class="error"></div>
+
+  <div class="card" id="infoCard" style="display:none;">
+    <div class="toprow">
+      <div>
+        <div style="font-size:18px; font-weight:700;" id="placeName">—</div>
+        <div class="small" id="coordsText">—</div>
+      </div>
+      <div class="pill" id="dateText">—</div>
+    </div>
+
+    <div class="highlight" id="fastingBox">
+      <div style="font-weight:800; margin-bottom:6px;">🍽️ Fasting Info</div>
+      <div id="suhoorEnd">Suhoor ends (stop eating): —</div>
+      <div id="iftarTime">Iftar (break fast): —</div>
+      <div class="small">Note: Most timetables use <b>Fajr</b> as the stop-eating time. Some mosques add a small safety margin (e.g., +1 to +5 minutes).</div>
+    </div>
+
+    <table>
+      <tbody id="timesBody"></tbody>
+    </table>
+
+    <div class="small">
+      Calculation source: AlAdhan timings API (method 3). If you want your local mosque method, tell me which one and I’ll adjust.
+    </div>
+  </div>
+
+<script>
+  const errBox = document.getElementById("err");
+  const infoCard = document.getElementById("infoCard");
+  const placeNameEl = document.getElementById("placeName");
+  const coordsTextEl = document.getElementById("coordsText");
+  const dateTextEl = document.getElementById("dateText");
+  const timesBody = document.getElementById("timesBody");
+  const suhoorEndEl = document.getElementById("suhoorEnd");
+  const iftarTimeEl = document.getElementById("iftarTime");
+
+  function showError(msg) {
+    errBox.style.display = "block";
+    errBox.textContent = msg;
+  }
+  function clearError() {
+    errBox.style.display = "none";
+    errBox.textContent = "";
+  }
+
+  // Get a friendly city/town name from GPS using OpenStreetMap Nominatim
+  async function getPlaceName(lat, lon) {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error("Could not fetch location name.");
+    const data = await res.json();
+    const a = data.address || {};
+    return a.city || a.town || a.village || a.municipality || a.county || "Your location";
+  }
+
+  function addRow(label, value) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${label}</td><td>${value}</td>`;
+    timesBody.appendChild(tr);
+  }
+
+  async function loadPrayerTimes(lat, lon) {
+    // method=3 is Muslim World League in AlAdhan
+    const url = `https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lon}&method=3`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Could not fetch prayer times.");
+    const json = await res.json();
+
+    const t = json.data.timings;
+
+    // Date label (Gregorian)
+    const gDate = json.data.date?.gregorian?.date;
+    dateTextEl.textContent = gDate ? `Today: ${gDate}` : "Today";
+
+    // Fasting info
+    suhoorEndEl.innerHTML = `Suhoor ends (stop eating): <b>${t.Fajr}</b> (Fajr)`;
+    iftarTimeEl.innerHTML = `Iftar (break fast): <b>${t.Maghrib}</b> (Maghrib)`;
+
+    // Full prayer times table
+    timesBody.innerHTML = "";
+    addRow("Fajr", t.Fajr);
+    addRow("Sunrise", t.Sunrise);
+    addRow("Dhuhr", t.Dhuhr);
+    addRow("Asr", t.Asr);
+    addRow("Maghrib", t.Maghrib);
+    addRow("Isha", t.Isha);
+  }
+
+  document.getElementById("btnLoc").addEventListener("click", () => {
+    clearError();
+
+    if (!navigator.geolocation) {
+      showError("Geolocation not supported on this device.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+
+          infoCard.style.display = "block";
+          coordsTextEl.textContent = `Lat ${lat.toFixed(5)} • Lon ${lon.toFixed(5)}`;
+          placeNameEl.textContent = "Loading location…";
+          timesBody.innerHTML = "";
+
+          // Load both in parallel
+          const [place] = await Promise.all([
+            getPlaceName(lat, lon).catch(() => null),
+            loadPrayerTimes(lat, lon)
+          ]);
+
+          placeNameEl.textContent = place ? place : "Location detected";
+        } catch (e) {
+          showError(e.message || "Something went wrong.");
+        }
+      },
+      (err) => {
+        if (err.code === 1) {
+          showError("Location permission denied. iPhone: Settings → Safari → Location → Allow / While Using.");
+        } else {
+          showError("Location error: " + err.message);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  });
+</script>
+</body>
+</html>
