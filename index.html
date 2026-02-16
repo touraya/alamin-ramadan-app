@@ -79,6 +79,8 @@
       <div>
         <div style="font-size:18px; font-weight:800;" id="placeName">—</div>
         <div class="small" id="coordsText">—</div>
+        <div class="small" id="nowTime">—</div>
+<div class="small" id="hijriDate">—</div>
       </div>
       <div class="pill" id="dateText">—</div>
     </div>
@@ -438,6 +440,34 @@ if (shareBtn) {
     window.prompt("Copy this link:", url);
   });
 }
+  function updateClockAndHijri() {
+  const now = new Date();
+
+  // Current time (phone local time)
+  const timeStr = new Intl.DateTimeFormat(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).format(now);
+
+  // Hijri date (Islamic calendar)
+  // Uses the phone locale automatically; you can force "en" or "de" if you want.
+  const hijriStr = new Intl.DateTimeFormat(undefined, {
+    calendar: "islamic",
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  }).format(now);
+
+  const nowEl = document.getElementById("nowTime");
+  const hijriEl = document.getElementById("hijriDate");
+  if (nowEl) nowEl.textContent = `Time: ${timeStr}`;
+  if (hijriEl) hijriEl.textContent = `Hijri: ${hijriStr}`;
+}
+
+// Update immediately and every second
+updateClockAndHijri();
+setInterval(updateClockAndHijri, 1000);
 </script>
 </body>
 </html>
