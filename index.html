@@ -52,7 +52,7 @@
 
   <div class="row">
   <button id="btnGPS">Use My Location (GPS)</button>
-  <button id="btnShare" class="secondary">Share App</button>
+  <button id="btnShare" type="button" class="secondary">Share App</button>
   <span class="chip" id="activeMode">Mode: Not set</span>
   <span class="chip" id="netState">Online</span>
 </div>
@@ -412,6 +412,32 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js');
   }
+  // Share button (native share -> clipboard -> prompt fallback)
+const shareBtn = document.getElementById("btnShare");
+if (shareBtn) {
+  shareBtn.addEventListener("click", async () => {
+    const url = "https://touraya.github.io/alamin-ramadan-app/";
+    const title = "Alamin’s Ramadan App";
+    const text = "Prayer times + Ramadan calendar (GPS + city search).";
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url });
+        return;
+      }
+    } catch {}
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+        alert("Link copied! Paste it in WhatsApp / SMS.");
+        return;
+      }
+    } catch {}
+
+    window.prompt("Copy this link:", url);
+  });
+}
 </script>
 </body>
 </html>
