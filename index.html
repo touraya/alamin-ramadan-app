@@ -445,10 +445,11 @@ if (shareBtn) {
 
   // Current time (phone local time)
   const timeStr = new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
-  }).format(now);
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false
+}).format(now);
 
   // Hijri date (Islamic calendar)
   // Uses the phone locale automatically; you can force "en" or "de" if you want.
