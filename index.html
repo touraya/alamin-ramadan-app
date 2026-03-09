@@ -469,6 +469,144 @@ if (shareBtn) {
 // Update immediately and every second
 updateClockAndHijri();
 setInterval(updateClockAndHijri, 1000);
+
+  const mosqueResults = document.getElementById("mosqueResults");
+const mosqueStatus = document.getElementById("mosqueStatus");
+const mosqueLabel = document.getElementById("mosqueLabel");
+
+function toRad(v) {
+  return (v * Math.PI) / 180;
+}
+
+function calcDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+async function fetchNearbyMosques(lat, lon) {
+  const query = `
+    [out:json];
+    (
+      node["amenity"="place_of_worship"]["religion"="muslim"](around:10000,${lat},${lon});
+      way["amenity"="place_of_worship"]["religion"="muslim"](around:10000,${lat},${lon});
+      relation["amenity"="place_of_worship"]["religion"="muslim"](around:10000,${lat},${lon});
+      node["name"~"moschee|mosque|masjid",i](around:10000,${lat},${lon});
+      way["name"~"moschee|mosque|masjid",i](around:10000,${lat},${lon});
+      relation["name"~"moschee|mosque|masjid",i](around:10000,${lat},${lon});
+    );
+    out center tags;
+  `;
+
+  const url = "https://overpass-api.de/api/interpreter";
+  const res = await fetch(url, {
+    method: "POST",
+    body: query,
+    headers: {
+      "Content-Type": "text/plain"
+    }
+  });
+
+  if (!res.ok) {
+    throw new Error("Could not fetch mosque data.");
+  }
+
+  const data = await res.json();
+  return data.elements || [];
+}
+
+function formatMosqueAddress(tags) {
+  const parts = [
+    tags["addr:street"],
+    tags["addr:housenumber"],
+    tags["addr:postcode"],
+    tags["addr:city"]
+  ].filter(Boolean);
+  return parts.length ? parts.join(" ") : (tags["addr:place"] || "Address not available");
+}
+
+function renderMosques(items, userLat, userLon) {
+  mosqueResults.innerHTML = "";
+  mosqueResults.style.display = "block";
+
+  if (!items.length) {
+    mosqueResults.innerHTML = `<div style="padding:12px; color:#333;">No nearby mosques found.</div>`;
+    return;
+  }
+
+  const mapped = items.map((item) => {
+    const mLat = item.lat ?? item.center?.lat;
+    const mLon = item.lon ?? item.center?.lon;
+    const name = item.tags?.name || "Mosque";
+    const address = formatMosqueAddress(item.tags || {});
+    const distance = (mLat != null && mLon != null)
+      ? calcDistanceKm(userLat, userLon, mLat, mLon)
+      : null;
+
+    return {
+      name,
+      address,
+      lat: mLat,
+      lon: mLon,
+      distance
+    };
+  }).filter(x => x.lat != null && x.lon != null);
+
+  mapped.sort((a, b) => (a.distance ?? 9999) - (b.distance ?? 9999));
+
+  mapped.slice(0, 15).forEach((m) => {
+    const wrap = document.createElement("div");
+    wrap.style.padding = "12px";
+    wrap.style.borderBottom = "1px solid #eee";
+
+    const distanceText = m.distance != null ? `${m.distance.toFixed(1)} km` : "—";
+
+    wrap.innerHTML = `
+      <div style="font-weight:800; color:#111;">${m.name}</div>
+      <div style="font-size:13px; color:#555; margin-top:4px;">${m.address}</div>
+      <div style="font-size:13px; color:#555; margin-top:4px;">Distance: ${distanceText}</div>
+      <div style="margin-top:10px;">
+        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(m.lat + "," + m.lon)}"
+           target="_blank"
+           style="display:inline-block; padding:10px 12px; background:#f4c430; color:#111; text-decoration:none; border-radius:10px; font-weight:700;">
+          Navigate
+        </a>
+      </div>
+    `;
+
+    mosqueResults.appendChild(wrap);
+  });
+}
+
+document.getElementById("btnMosques").addEventListener("click", async () => {
+  try {
+    clearError();
+
+    if (active.lat == null || active.lon == null) {
+      showError("Set a location first using GPS or Search.");
+      return;
+    }
+
+    mosqueStatus.textContent = "Searching nearby mosques...";
+    mosqueLabel.textContent = placeNameEl.textContent || "Selected location";
+    mosqueResults.style.display = "none";
+    mosqueResults.innerHTML = "";
+
+    const results = await fetchNearbyMosques(active.lat, active.lon);
+    renderMosques(results, active.lat, active.lon);
+
+    mosqueStatus.textContent = `Found ${Math.min(results.length, 15)} result(s).`;
+  } catch (e) {
+    mosqueStatus.textContent = "Search failed.";
+    showError(e.message || "Could not search nearby mosques.");
+  }
+});
   <div class="card" id="mosqueCard" style="display:block;">
   <div class="row" style="justify-content:space-between; align-items:flex-start;">
     <div style="font-weight:900;">🕌 Nearby Mosques</div>
