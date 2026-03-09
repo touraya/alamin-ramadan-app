@@ -469,6 +469,19 @@ if (shareBtn) {
 // Update immediately and every second
 updateClockAndHijri();
 setInterval(updateClockAndHijri, 1000);
+  <div class="card" id="mosqueCard" style="display:block;">
+  <div class="row" style="justify-content:space-between; align-items:flex-start;">
+    <div style="font-weight:900;">🕌 Nearby Mosques</div>
+    <span class="pill" id="mosqueLabel">Use GPS or selected city</span>
+  </div>
+
+  <div class="row" style="margin-top:10px;">
+    <button id="btnMosques">Find Nearby Mosques</button>
+    <span class="small" id="mosqueStatus" style="margin-top:0;">Searches around your current selected location.</span>
+  </div>
+
+  <div id="mosqueResults" class="list" style="display:none; margin-top:12px;"></div>
+</div>
 </script>
 </body>
 </html>
